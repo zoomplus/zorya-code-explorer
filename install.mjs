@@ -7,10 +7,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
 
-const RELEASE = 'v0.1.2';
-const PACKAGE_ROOT_NAME = 'zorya-code-explorer-0.1.2';
-const ASSET = 'zorya-code-explorer-v0.1.2.tgz';
-const EXPECTED_SHA256 = 'dd63cb5a9da09a456ddda3952d774863bb6ad3323966f3eeecfd3d873e2dcc83';
+const RELEASE = 'v0.1.3';
+const PACKAGE_ROOT_NAME = 'zorya-code-explorer-0.1.3';
+const ASSET = 'zorya-code-explorer-v0.1.3.tgz';
+const EXPECTED_SHA256 = '7bd2f8155e66c813f471769c149db1d94482b92a378521c89f19550607f84c2a';
 const ASSET_URL = `https://github.com/zoomplus/zorya-code-explorer/releases/download/${RELEASE}/${ASSET}`;
 const CHECKSUMS_URL = `https://raw.githubusercontent.com/zoomplus/zorya-code-explorer/${RELEASE}/SHA256SUMS`;
 const MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
@@ -19,7 +19,7 @@ const DOWNLOAD_TIMEOUT_MS = 90_000;
 const NPM_TIMEOUT_MS = 10 * 60_000;
 const LOCK_WAIT_MS = 10 * 60_000;
 const LOCK_RETRY_MS = 400;
-const LOCK_MARKER = 'zorya-code-explorer-public-bootstrap-v3';
+const LOCK_MARKER = 'zorya-code-explorer-public-bootstrap-v4';
 const ALLOWED_HOSTS = new Set([
   'github.com',
   'raw.githubusercontent.com',
@@ -175,7 +175,7 @@ function parseChecksumFile(bytes) {
   const lines = text.split(/\r?\n/u).filter((line) => line.trim() !== '');
   const matching = lines.filter((line) => line.trimEnd().endsWith(ASSET));
   if (matching.length !== 1) throw new Error(`The ${RELEASE} SHA256SUMS must contain exactly one entry for ${ASSET}.`);
-  const match = matching[0].match(/^([0-9a-fA-F]{64})\s+\*?zorya-code-explorer-v0\.1\.2\.tgz$/u);
+  const match = matching[0].match(/^([0-9a-fA-F]{64})\s+\*?zorya-code-explorer-v0\.1\.3\.tgz$/u);
   if (!match) throw new Error(`The SHA256SUMS entry for ${ASSET} is malformed.`);
   const digest = match[1].toLowerCase();
   if (digest !== EXPECTED_SHA256) throw new Error(`The ${RELEASE} SHA256SUMS digest does not match the pinned release digest in this installer.`);
@@ -197,7 +197,7 @@ function requestBuffer(input, maxBytes, redirectsLeft = 5) {
     };
     const totalTimer = setTimeout(() => request.destroy(new Error('GitHub download timed out.')), DOWNLOAD_TIMEOUT_MS);
     const request = https.get(url, {
-    headers: { 'User-Agent': 'zorya-code-explorer-installer/3', Accept: 'application/octet-stream', 'Accept-Encoding': 'identity', 'Cache-Control': 'no-cache' },
+    headers: { 'User-Agent': 'zorya-code-explorer-installer/4', Accept: 'application/octet-stream', 'Accept-Encoding': 'identity', 'Cache-Control': 'no-cache' },
     }, (response) => {
       const status = response.statusCode ?? 0;
       if ([301, 302, 303, 307, 308].includes(status)) {
