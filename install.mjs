@@ -7,10 +7,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
 
-const RELEASE = 'v0.1.1';
-const PACKAGE_ROOT_NAME = 'zorya-code-explorer-0.1.1';
-const ASSET = 'zorya-code-explorer-v0.1.1.tgz';
-const EXPECTED_SHA256 = '40d8b112cf91c7fd0ec44510c09ff5de7da62f0dd1bf9cdef40c5d4fdbcadc6b';
+const RELEASE = 'v0.1.2';
+const PACKAGE_ROOT_NAME = 'zorya-code-explorer-0.1.2';
+const ASSET = 'zorya-code-explorer-v0.1.2.tgz';
+const EXPECTED_SHA256 = 'dd63cb5a9da09a456ddda3952d774863bb6ad3323966f3eeecfd3d873e2dcc83';
 const ASSET_URL = `https://github.com/zoomplus/zorya-code-explorer/releases/download/${RELEASE}/${ASSET}`;
 const CHECKSUMS_URL = `https://raw.githubusercontent.com/zoomplus/zorya-code-explorer/${RELEASE}/SHA256SUMS`;
 const MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
@@ -19,7 +19,7 @@ const DOWNLOAD_TIMEOUT_MS = 90_000;
 const NPM_TIMEOUT_MS = 10 * 60_000;
 const LOCK_WAIT_MS = 10 * 60_000;
 const LOCK_RETRY_MS = 400;
-const LOCK_MARKER = 'zorya-code-explorer-public-bootstrap-v2';
+const LOCK_MARKER = 'zorya-code-explorer-public-bootstrap-v3';
 const ALLOWED_HOSTS = new Set([
   'github.com',
   'raw.githubusercontent.com',
@@ -36,7 +36,7 @@ const REQUIRED_RELATIVE_FILES = [
 
 function usage() {
   return [
-    'Usage: node install.mjs [--project <project-directory>] [--config <external-operator-config.json>]',
+    'Usage: node install.mjs [--project <project-directory>] [--config <external-operator-config.json>] [--read-only]',
     'Without --project, the current directory is used.',
   ].join('\n');
 }
@@ -46,6 +46,11 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
     if (flag === '--help' || flag === '-h') return { help: true };
+    if (flag === '--read-only') {
+      if (values.has(flag)) throw new Error(`Option may be supplied only once: ${flag}`);
+      values.set(flag, true);
+      continue;
+    }
     if (flag !== '--project' && flag !== '--config') throw new Error(`Unknown option: ${flag}\n${usage()}`);
     if (values.has(flag)) throw new Error(`Option may be supplied only once: ${flag}`);
     const value = argv[i + 1];
@@ -53,7 +58,11 @@ function parseArgs(argv) {
     values.set(flag, value);
     i += 1;
   }
-  return { project: values.get('--project') ?? process.cwd(), config: values.get('--config') };
+  return {
+    project: values.get('--project') ?? process.cwd(),
+    config: values.get('--config'),
+    ...(values.has('--read-only') ? { readOnly: true } : {}),
+  };
 }
 
 function within(parent, candidate) {
@@ -165,11 +174,11 @@ function parseChecksumFile(bytes) {
   catch (error) { throw new Error('SHA256SUMS is not valid UTF-8.', { cause: error }); }
   const lines = text.split(/\r?\n/u).filter((line) => line.trim() !== '');
   const matching = lines.filter((line) => line.trimEnd().endsWith(ASSET));
-  if (matching.length !== 1) throw new Error(`The v0.1.1 SHA256SUMS must contain exactly one entry for ${ASSET}.`);
-  const match = matching[0].match(/^([0-9a-fA-F]{64})\s+\*?zorya-code-explorer-v0\.1\.1\.tgz$/u);
+  if (matching.length !== 1) throw new Error(`The ${RELEASE} SHA256SUMS must contain exactly one entry for ${ASSET}.`);
+  const match = matching[0].match(/^([0-9a-fA-F]{64})\s+\*?zorya-code-explorer-v0\.1\.2\.tgz$/u);
   if (!match) throw new Error(`The SHA256SUMS entry for ${ASSET} is malformed.`);
   const digest = match[1].toLowerCase();
-  if (digest !== EXPECTED_SHA256) throw new Error('The v0.1.1 SHA256SUMS digest does not match the pinned release digest in this installer.');
+  if (digest !== EXPECTED_SHA256) throw new Error(`The ${RELEASE} SHA256SUMS digest does not match the pinned release digest in this installer.`);
   return digest;
 }
 
@@ -188,7 +197,7 @@ function requestBuffer(input, maxBytes, redirectsLeft = 5) {
     };
     const totalTimer = setTimeout(() => request.destroy(new Error('GitHub download timed out.')), DOWNLOAD_TIMEOUT_MS);
     const request = https.get(url, {
-      headers: { 'User-Agent': 'zorya-code-explorer-installer/2', Accept: 'application/octet-stream', 'Accept-Encoding': 'identity', 'Cache-Control': 'no-cache' },
+    headers: { 'User-Agent': 'zorya-code-explorer-installer/3', Accept: 'application/octet-stream', 'Accept-Encoding': 'identity', 'Cache-Control': 'no-cache' },
     }, (response) => {
       const status = response.statusCode ?? 0;
       if ([301, 302, 303, 307, 308].includes(status)) {
@@ -439,10 +448,11 @@ async function acquireInstallLock(lockPath) {
   throw new Error('Another installer is still preparing this release. Wait for it to finish and retry.');
 }
 
-async function runPackagedInstaller(installPath, project, config) {
+async function runPackagedInstaller(installPath, project, config, readOnly) {
   const installerPath = path.join(installPath, 'scripts', 'install.mjs');
   const args = [installerPath, '--project', project];
   if (config) args.push('--config', config);
+  if (readOnly) args.push('--read-only');
   const result = spawnSync(process.execPath, args, {
     cwd: project,
     encoding: 'utf8',
@@ -477,7 +487,7 @@ async function main(argv) {
   const release = await downloadVerifiedRelease();
   process.stdout.write(`Verified SHA-256 ${release.digest}.\n`);
   const installPath = await installPackage(versionRoot, release.digest, release.archive);
-  await runPackagedInstaller(installPath, project, config);
+  await runPackagedInstaller(installPath, project, config, args.readOnly);
   process.stdout.write(`Installed project MCP entry for ${project}.\n`);
   process.stdout.write(`Verified package: ${installPath}\n`);
 }
@@ -489,3 +499,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exitCode = 1;
   }
 }
+
+export { parseArgs, runPackagedInstaller };
