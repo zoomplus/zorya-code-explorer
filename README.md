@@ -10,7 +10,9 @@
 
 Репозиторий и установщик общедоступны; аккаунт GitHub не нужен. Для загрузки сборки не нужно клонировать исходный код, настраивать GitHub CLI или вручную проверять checksum. Нужны Node.js 20.19 или новее и npm.
 
-Установщик загружает закреплённый архив `v0.1.0`, сверяет его с версионной `SHA256SUMS`, проверяет содержимое и устанавливает его вне проекта. Он запускает `npm ci --omit=dev --ignore-scripts` и регистрирует MCP только в конфигурации целевого Codex-проекта. Глобальные настройки и файлы проекта не меняются.
+Установщик `installer-v2` загружает закреплённый архив `v0.1.1`, сверяет его с версионной `SHA256SUMS`, проверяет содержимое и устанавливает его вне проекта. Он запускает `npm ci --omit=dev --ignore-scripts` и регистрирует MCP только в конфигурации целевого Codex-проекта. Глобальные настройки и зависимости проекта не меняются.
+
+Если в проекте уже установлен `0.1.0`, повторно запустите bootstrap-команду выше из этого проекта. Новая версия установщика безопасно обновляет только свою распознанную запись MCP, оставляя посторонние параметры конфигурации на месте. После разрешения клиенту перечитать проектную конфигурацию откройте новый чат. Установка добавляет проектную инструкцию `.agents/skills/zorya-code-explorer/SKILL.md`, не перезаписывая `AGENTS.md`. Если клиент её не загрузил, попросите агента открыть эту инструкцию вручную; затем проверьте подключение по шагам ниже.
 
 ### Если агенту нужны команды
 
@@ -21,7 +23,7 @@ set -eu
 TARGET="$(pwd -P)"
 BOOTSTRAP_DIR="$(mktemp -d)"
 BOOTSTRAP="$BOOTSTRAP_DIR/install.mjs"
-curl --fail --location --output "$BOOTSTRAP" https://raw.githubusercontent.com/zoomplus/zorya-code-explorer/installer-v1/install.mjs
+curl --fail --location --output "$BOOTSTRAP" https://raw.githubusercontent.com/zoomplus/zorya-code-explorer/installer-v2/install.mjs
 node "$BOOTSTRAP" --project "$TARGET"
 ```
 
@@ -33,7 +35,7 @@ $Target = (Get-Location).Path
 $TempRoot = Join-Path $env:TEMP ('zce-' + [guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $TempRoot | Out-Null
 $Bootstrap = Join-Path $TempRoot 'install.mjs'
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/zoomplus/zorya-code-explorer/installer-v1/install.mjs' -OutFile $Bootstrap
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/zoomplus/zorya-code-explorer/installer-v2/install.mjs' -OutFile $Bootstrap
 node $Bootstrap --project $Target
 if ($LASTEXITCODE -ne 0) { throw 'Zorya Code Explorer installation failed' }
 ```
@@ -44,11 +46,13 @@ if ($LASTEXITCODE -ne 0) { throw 'Zorya Code Explorer installation failed' }
 
 Разрешение клиенту читать проектную MCP-конфигурацию и доверие к серверу подтверждает пользователь; не включайте автоматическое одобрение. После подтверждения откройте новый чат и проверьте через реальный MCP-клиент:
 
-1. MCP handshake проходит и `tools/list` возвращает 14 инструментов.
+1. MCP handshake проходит и `tools/list` возвращает 15 инструментов.
 2. `explorer_open` для целевого проекта возвращает `snapshot.root`, совпадающий с его точным абсолютным корнем.
 3. `explorer_source` читает сущность из полученного кадра.
 
 Не объявляйте установку завершённой, пока исходник не прочитан из точного проекта.
+
+Для широкого вопроса о функции или проекте показывай семантический обзор связей по умолчанию; `explorer_flow` оставь для запроса о потоке управления конкретной функции. Попросите агента показать диаграмму и объяснить роли узлов и подписи рёбер. Он должен прочитать исходник, включить и отметить видимый фокус, сохранить алиасы и показать каждое подтверждённое ребро между выбранными узлами. В роли `external` обозначается только настоящая граница за пределами проекта или процесса; локальная заглушка оплаты остаётся локальным процессом. Финальный ответ должен содержать Mermaid-диаграмму, возвращённую инструментом, без перестройки; объяснение пишется отдельно. Project skill описывает этот маршрут, но клиент сам решает, когда вызывать MCP; на некоторых хостах инструкцию нужно загрузить вручную.
 
 Инициализация и обнаружение tools могут выполняться одновременно. Если один процесс владеет локальной БД workspace, а второй анализирует ту же папку, второй может получить `workspace_busy`: заверши или закрой первую MCP-сессию и повтори; не удаляй lock вручную. Разные проекты изолированы.
 

@@ -7,10 +7,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
 
-const RELEASE = 'v0.1.0';
-const PACKAGE_ROOT_NAME = 'zorya-code-explorer-0.1.0';
-const ASSET = 'zorya-code-explorer-v0.1.0.tgz';
-const EXPECTED_SHA256 = '37f4d2c124d79bb91d361c7f3bafb659eb525d55e17e7fbdcc0e6c658b0988c4';
+const RELEASE = 'v0.1.1';
+const PACKAGE_ROOT_NAME = 'zorya-code-explorer-0.1.1';
+const ASSET = 'zorya-code-explorer-v0.1.1.tgz';
+const EXPECTED_SHA256 = '40d8b112cf91c7fd0ec44510c09ff5de7da62f0dd1bf9cdef40c5d4fdbcadc6b';
 const ASSET_URL = `https://github.com/zoomplus/zorya-code-explorer/releases/download/${RELEASE}/${ASSET}`;
 const CHECKSUMS_URL = `https://raw.githubusercontent.com/zoomplus/zorya-code-explorer/${RELEASE}/SHA256SUMS`;
 const MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
@@ -19,7 +19,7 @@ const DOWNLOAD_TIMEOUT_MS = 90_000;
 const NPM_TIMEOUT_MS = 10 * 60_000;
 const LOCK_WAIT_MS = 10 * 60_000;
 const LOCK_RETRY_MS = 400;
-const LOCK_MARKER = 'zorya-code-explorer-public-bootstrap-v1';
+const LOCK_MARKER = 'zorya-code-explorer-public-bootstrap-v2';
 const ALLOWED_HOSTS = new Set([
   'github.com',
   'raw.githubusercontent.com',
@@ -165,11 +165,11 @@ function parseChecksumFile(bytes) {
   catch (error) { throw new Error('SHA256SUMS is not valid UTF-8.', { cause: error }); }
   const lines = text.split(/\r?\n/u).filter((line) => line.trim() !== '');
   const matching = lines.filter((line) => line.trimEnd().endsWith(ASSET));
-  if (matching.length !== 1) throw new Error(`The v0.1.0 SHA256SUMS must contain exactly one entry for ${ASSET}.`);
-  const match = matching[0].match(/^([0-9a-fA-F]{64})\s+\*?zorya-code-explorer-v0\.1\.0\.tgz$/u);
+  if (matching.length !== 1) throw new Error(`The v0.1.1 SHA256SUMS must contain exactly one entry for ${ASSET}.`);
+  const match = matching[0].match(/^([0-9a-fA-F]{64})\s+\*?zorya-code-explorer-v0\.1\.1\.tgz$/u);
   if (!match) throw new Error(`The SHA256SUMS entry for ${ASSET} is malformed.`);
   const digest = match[1].toLowerCase();
-  if (digest !== EXPECTED_SHA256) throw new Error('The v0.1.0 SHA256SUMS digest does not match the pinned release digest in this installer.');
+  if (digest !== EXPECTED_SHA256) throw new Error('The v0.1.1 SHA256SUMS digest does not match the pinned release digest in this installer.');
   return digest;
 }
 
@@ -188,7 +188,7 @@ function requestBuffer(input, maxBytes, redirectsLeft = 5) {
     };
     const totalTimer = setTimeout(() => request.destroy(new Error('GitHub download timed out.')), DOWNLOAD_TIMEOUT_MS);
     const request = https.get(url, {
-      headers: { 'User-Agent': 'zorya-code-explorer-installer/1', Accept: 'application/octet-stream', 'Accept-Encoding': 'identity', 'Cache-Control': 'no-cache' },
+      headers: { 'User-Agent': 'zorya-code-explorer-installer/2', Accept: 'application/octet-stream', 'Accept-Encoding': 'identity', 'Cache-Control': 'no-cache' },
     }, (response) => {
       const status = response.statusCode ?? 0;
       if ([301, 302, 303, 307, 308].includes(status)) {
